@@ -22,6 +22,10 @@ commands:
     description: Gives the player a Wand of Illusion
     usage: /<command>
     permission: altarsmp.givewandofillusion
+  altar:
+    description: Spawn a crafting altar for custom items
+    usage: /altar spawn <bloodlust|boneblade|wandofillusion>
+    permission: altarsmp.altar
 
 permissions:
   altarsmp.giveboneblade:
@@ -36,3 +40,6 @@ permissions:
   altarsmp.givewandofillusion:
     description: Allows players to get the Wand of Illusion
     default: true
+  altarsmp.altar:
+    description: Allows players to spawn crafting altars
+    default: op

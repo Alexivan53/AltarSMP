@@ -84,37 +84,55 @@ public class CustomItems {
         return head;
     }
 
+    public static ItemStack createIllusionCore() {
+        ItemStack core = new ItemStack(Material.AMETHYST_SHARD);
+        ItemMeta meta = core.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Illusion Core");
+            meta.setLore(Arrays.asList(
+                ChatColor.GRAY + "A condensed shard of illusory energy.",
+                ChatColor.YELLOW + "Required to forge the Wand of Illusion."
+            ));
+            meta.setCustomModelData(2001);
+            NamespacedKey key = new NamespacedKey(AltarSMP.getPlugin(AltarSMP.class), "illusion_core");
+            meta.getPersistentDataContainer().set(key, PersistentDataType.BOOLEAN, true);
+            core.setItemMeta(meta);
+        }
+        return core;
+    }
+
 
     public static ItemStack createBloodlust() {
         ItemStack bloodlust = new ItemStack(Material.DIAMOND_SWORD);
         ItemMeta meta = bloodlust.getItemMeta();
 
         if (meta != null) {
-            meta.setDisplayName(ChatColor.DARK_RED + "Bloodlust");
+            meta.setDisplayName("§4§lBloodlust");
 
             meta.setLore(Arrays.asList(
-                ChatColor.GRAY + "A cursed sword that grows stronger",
-                ChatColor.GRAY + "with each kill...",
+                "§7§oA powerful blade made with solid blood.",
+                "§7§oThe more you kill with it, the stronger you become.",
+                "§e§l!! §eShift-Left-Click §7to view kill count.",
                 "",
-                ChatColor.RED + "0 Kills:",
-                ChatColor.GRAY + "• Infection Attack (15% bleed chance)",
+                "§cInfection §7(0+ Kills)",
+                "§7 15% chance to bleed an enemy on hit. §715 second cooldown.",
                 "",
-                ChatColor.RED + "1 Kill:",
-                ChatColor.GRAY + "• Permanent Speed II",
+                "§cSpeed II §7(1+ Kill)",
+                "§7 Gain permanent §bSpeed II §7when holding Bloodlust.",
                 "",
-                ChatColor.RED + "2 Kills:",
-                ChatColor.GRAY + "• Blood Tracker (30 min tracking)",
+                "§cBlood Tracker §7(2+ Kills)",
+                "§7 Track the blood of nearby players when holding Bloodlust.",
+                "§7 §oOnly you can see the particles.",
                 "",
-                ChatColor.RED + "3 Kills:",
-                ChatColor.GRAY + "• Blood Trail (Right-click for buffs)",
+                "§cBlood Trail §7(3+ Kills)",
+                "§7 Submerge yourself in a puddle of blood. §761 second cooldown.",
                 "",
-                ChatColor.RED + "4 Kills:",
-                ChatColor.GRAY + "• Permanent Strength I",
+                "§cStrength I §7(4+ Kills)",
+                "§7 Gain permanent §cStrength I §7when holding Bloodlust.",
                 "",
-                ChatColor.RED + "5 Kills:",
-                ChatColor.GRAY + "• Blood Hook (Shift + Right-click)",
-                "",
-                ChatColor.DARK_PURPLE + "Kill Count: 0"
+                "§cBlood Hook §7(5+ Kills)",
+                "§7 Throw a blood chain in front of you, pulling anything it",
+                "§7 touches towards you. §730 second cooldown."
             ));
 
             meta.addEnchant(Enchantment.UNBREAKING, 1, true);
@@ -169,30 +187,31 @@ public class CustomItems {
         item.setItemMeta(meta);
     }
 
-    private static void updateBloodlustLore(ItemMeta meta, int kills) {
+    private static void updateBloodlustLore(ItemMeta meta, int killsIgnored) {
         meta.setLore(Arrays.asList(
-            ChatColor.GRAY + "A cursed sword that grows stronger",
-            ChatColor.GRAY + "with each kill...",
+            "§7§oA powerful blade made with solid blood.",
+            "§7§oThe more you kill with it, the stronger you become.",
+            "§e§l!! §eShift-Left-Click §7to view kill count.",
             "",
-            ChatColor.RED + "0 Kills:",
-            ChatColor.GRAY + "• Infection Attack (15% bleed chance)",
+            "§cInfection §7(0+ Kills)",
+            "§7 15% chance to bleed an enemy on hit. §715 second cooldown.",
             "",
-            ChatColor.RED + "1 Kill:",
-            ChatColor.GRAY + "• Permanent Speed II",
+            "§cSpeed II §7(1+ Kill)",
+            "§7 Gain permanent §bSpeed II §7when holding Bloodlust.",
             "",
-            ChatColor.RED + "2 Kills:",
-            ChatColor.GRAY + "• Blood Tracker (30 min tracking)",
+            "§cBlood Tracker §7(2+ Kills)",
+            "§7 Track the blood of nearby players when holding Bloodlust.",
+            "§7 §oOnly you can see the particles.",
             "",
-            ChatColor.RED + "3 Kills:",
-            ChatColor.GRAY + "• Blood Trail (Right-click for buffs)",
+            "§cBlood Trail §7(3+ Kills)",
+            "§7 Submerge yourself in a puddle of blood. §761 second cooldown.",
             "",
-            ChatColor.RED + "4 Kills:",
-            ChatColor.GRAY + "• Permanent Strength I",
+            "§cStrength I §7(4+ Kills)",
+            "§7 Gain permanent §cStrength I §7when holding Bloodlust.",
             "",
-            ChatColor.RED + "5 Kills:",
-            ChatColor.GRAY + "• Blood Hook (Shift + Right-click)",
-            "",
-            ChatColor.DARK_PURPLE + "Kill Count: " + kills
+            "§cBlood Hook §7(5+ Kills)",
+            "§7 Throw a blood chain in front of you, pulling anything it",
+            "§7 touches towards you. §730 second cooldown."
         ));
     }
 

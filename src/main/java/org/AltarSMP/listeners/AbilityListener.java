@@ -1,19 +1,26 @@
 package org.AltarSMP.listeners;
 
 import org.bukkit.*;
-import org.bukkit.block.Block;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+import org.bukkit.entity.BlockDisplay;
+import org.bukkit.World;
+import org.bukkit.util.Transformation;
+import org.joml.Vector3f;
+import org.joml.Quaternionf;
+import com.destroystokyo.paper.event.player.PlayerJumpEvent;
+import net.kyori.adventure.text.Component;
 import org.AltarSMP.AltarSMP;
 import org.AltarSMP.cooldowns.AbilityCooldownManager;
 import org.AltarSMP.items.CustomItems;
@@ -30,9 +37,63 @@ public class AbilityListener implements Listener {
     private final Map<UUID, EntityType> lastKilledMob = new HashMap<>();
     private final Map<UUID, Boolean> currentDisguise = new HashMap<>();
     private final Map<UUID, BukkitRunnable> boneCageRunnables = new HashMap<>();
+    private final Map<UUID, BukkitRunnable> disguiseTimers = new HashMap<>();
+    private final Map<UUID, java.util.List<Entity>> boneCageDisplays = new HashMap<>();
+    private final java.util.Set<UUID> activeBloodTrails = new java.util.HashSet<>();
+    private final Map<UUID, BukkitRunnable> bloodTrailTasks = new HashMap<>();
+    private final java.util.Set<UUID> bloodFormPlayers = new java.util.HashSet<>();
 
     public AbilityListener(AltarSMP plugin) {
         this.cooldownManager = new AbilityCooldownManager(plugin);
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    boolean hasBloodlust = AbilityListener.this.hasBloodlustInInventory(player);
+                    int kills = hasBloodlust ? AbilityListener.this.getHighestBloodlustKills(player) : 0;
+
+                    if (hasBloodlust && kills >= 1) {
+                        if (!player.hasPotionEffect(PotionEffectType.SPEED)) {
+                            player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 60, 1, false, false));
+                        }
+                    } else {
+                        player.removePotionEffect(PotionEffectType.SPEED);
+                    }
+
+                    if (hasBloodlust && kills >= 4) {
+                        if (!player.hasPotionEffect(PotionEffectType.STRENGTH)) {
+                            player.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, 60, 0, false, false));
+                        }
+                    } else {
+                        player.removePotionEffect(PotionEffectType.STRENGTH);
+                    }
+
+                    if (hasBloodlust) {
+                        Player nearest = AbilityListener.this.findNearestPlayer(player, 40.0);
+                        if (nearest != null) {
+                            AbilityListener.this.drawDirectionParticles(player.getLocation(), nearest.getLocation(), Color.fromRGB(139, 0, 0));
+                        }
+                    }
+                }
+            }
+        }.runTaskTimer(AltarSMP.getPlugin(AltarSMP.class), 0L, 20L);
+    }
+
+    @EventHandler
+    public void onPlayerToggleSneak(org.bukkit.event.player.PlayerToggleSneakEvent event) {
+        Player player = event.getPlayer();
+        if (bloodFormPlayers.contains(player.getUniqueId()) && event.isSneaking()) {
+            exitBloodForm(player, true);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerJump(PlayerJumpEvent event) {
+        Player player = event.getPlayer();
+        if (bloodFormPlayers.contains(player.getUniqueId())) {
+            exitBloodForm(player, true);
+        }
     }
 
     @EventHandler
@@ -80,18 +141,46 @@ public class AbilityListener implements Listener {
         }
         
         if (CustomItems.isBloodlust(item)) {
+            if (player.isSneaking() && (event.getAction() == Action.LEFT_CLICK_AIR || event.getAction() == Action.LEFT_CLICK_BLOCK)) {
+                int kills = CustomItems.getBloodlustKillCount(item);
+                if (kills <= 0) {
+                    player.sendMessage(ChatColor.DARK_RED + "Bloodlust: " + ChatColor.RED + "Your At UNDEFINED bloodlust kills(s)");
+                } else {
+                    player.sendMessage(ChatColor.DARK_RED + "Bloodlust: " + ChatColor.GREEN + "You are at " + kills + " bloodlust kill(s)");
+                }
+                return;
+            }
             int kills = CustomItems.getBloodlustKillCount(item);
             
             if (kills >= 3 && event.getAction().toString().contains("RIGHT_CLICK")) {
                 if (!player.isSneaking()) {
+                    if (cooldownManager.isOnCooldown(player, "Blood Trail")) {
+                        long remaining = cooldownManager.getRemainingCooldown(player, "Blood Trail");
+                        player.sendMessage(ChatColor.RED + "Blood Trail is on cooldown for " + remaining + " more seconds!");
+                        event.setCancelled(true);
+                        return;
+                    }
+                    if (activeBloodTrails.contains(player.getUniqueId())) {
+                        player.sendMessage(ChatColor.RED + "Blood Trail is already active!");
+                        event.setCancelled(true);
+                        return;
+                    }
                     createBloodTrail(player);
+                    cooldownManager.setCooldown(player, "Blood Trail", 61);
                     event.setCancelled(true);
                 }
             }
             
             if (kills >= 5 && event.getAction().toString().contains("RIGHT_CLICK")) {
                 if (player.isSneaking()) {
+                    if (cooldownManager.isOnCooldown(player, "Blood Hook")) {
+                        long remaining = cooldownManager.getRemainingCooldown(player, "Blood Hook");
+                        player.sendMessage(ChatColor.RED + "Blood Hook is on cooldown for " + remaining + " more seconds!");
+                        event.setCancelled(true);
+                        return;
+                    }
                     performBloodHook(player);
+                    cooldownManager.setCooldown(player, "Blood Hook", 30);
                     event.setCancelled(true);
                 }
             }
@@ -138,18 +227,23 @@ public class AbilityListener implements Listener {
 
     @EventHandler
     public void onEntityDeathForIllusion(EntityDeathEvent event) {
-        if (event.getEntity().getKiller() instanceof Player) {
-            Player player = event.getEntity().getKiller();
-            EntityType killedMob = event.getEntityType();
-            
-            lastKilledMob.put(player.getUniqueId(), killedMob);
-            
-            player.getWorld().spawnParticle(Particle.ENCHANT, event.getEntity().getLocation(), 20, 0.5, 0.5, 0.5, 0.1);
-            player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.5f);
-            
-            player.sendMessage(ChatColor.LIGHT_PURPLE + "Wand of Illusion: " + ChatColor.GRAY + "You can now transform into a " + 
-                            ChatColor.YELLOW + killedMob.toString().toLowerCase().replace("_", " ") + ChatColor.GRAY + "!");
+        if (!(event.getEntity().getKiller() instanceof Player)) {
+            return;
         }
+        if (event.getEntity() instanceof Player) {
+            return;
+        }
+        Player player = event.getEntity().getKiller();
+        ItemStack used = player.getInventory().getItemInMainHand();
+        if (!CustomItems.isWandOfIllusion(used)) {
+            return;
+        }
+        EntityType killedMob = event.getEntityType();
+        lastKilledMob.put(player.getUniqueId(), killedMob);
+        player.getWorld().spawnParticle(Particle.ENCHANT, event.getEntity().getLocation(), 20, 0.5, 0.5, 0.5, 0.1);
+        player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.5f);
+        player.sendMessage(ChatColor.LIGHT_PURPLE + "Wand of Illusion: " + ChatColor.GRAY + "You can now transform into a " + 
+                        ChatColor.YELLOW + killedMob.toString().toLowerCase().replace("_", " ") + ChatColor.GRAY + "!");
     }
 
     @EventHandler
@@ -165,12 +259,16 @@ public class AbilityListener implements Listener {
         
         if (kills >= 0) {
             if (Math.random() < 0.15) {
+                if (cooldownManager.isOnCooldown(player, "Infection")) {
+                    return;
+                }
                 for (Player nearby : player.getWorld().getPlayers()) {
                     if (nearby.getLocation().distance(player.getLocation()) <= 3.0 && nearby != player) {
                         applyBleedingEffect(nearby);
                         player.sendMessage(ChatColor.DARK_RED + "Bloodlust: " + ChatColor.RED + "Infection attack triggered!");
                     }
                 }
+                cooldownManager.setCooldown(player, "Infection", 15);
             }
         }
     }
@@ -220,38 +318,52 @@ public class AbilityListener implements Listener {
     }
 
     private void createBoneCage(Player target) {
-        BukkitRunnable task = new BukkitRunnable() {
+        java.util.List<Entity> displays = new java.util.ArrayList<>();
+        Location base = target.getLocation();
+        World world = base.getWorld();
+        if (world == null) return;
+        double radius = 1.2;
+        int columns = 12;
+        for (int y = 0; y <= 2; y++) {
+            for (int i = 0; i < columns; i++) {
+                double angle = (2 * Math.PI / columns) * i;
+                double x = base.getX() + Math.cos(angle) * radius;
+                double z = base.getZ() + Math.sin(angle) * radius;
+                Location loc = new Location(world, x, base.getY() + y, z);
+                BlockDisplay display = world.spawn(loc, BlockDisplay.class, d -> {
+                    d.setBlock(Material.BONE_BLOCK.createBlockData());
+                    Transformation tf = new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(0.4f, 0.4f, 0.4f), new Quaternionf());
+                    d.setTransformation(tf);
+                });
+                displays.add(display);
+            }
+        }
+        boneCageDisplays.put(target.getUniqueId(), displays);
+
+        BukkitRunnable particleTask = new BukkitRunnable() {
             @Override
             public void run() {
                 if (!target.isOnline() || !target.hasMetadata("bone_cage_frozen")) {
                     cancel();
                     return;
                 }
-
-                Location center = target.getLocation().clone().add(0, 0, 0);
-                for (int x = -1; x <= 1; x++) {
-                    for (int y = 0; y <= 2; y++) {
-                        for (int z = -1; z <= 1; z++) {
-                            if ((x == 0 && y == 0) || (x == 0 && y == 1)) {
-                                continue;
-                            }
-                            if (Math.abs(x) + Math.abs(y - 1) + Math.abs(z) >= 2) {
-                                Location loc = center.clone().add(x + 0.5, y, z + 0.5);
-                                target.getWorld().spawnParticle(Particle.BLOCK, loc, 4, 0.02, 0.02, 0.02, Material.BONE_BLOCK.createBlockData());
-                            }
-                        }
-                    }
-                }
+                world.spawnParticle(Particle.DUST, target.getLocation(), 6, 0.6, 0.4, 0.6, new Particle.DustOptions(Color.fromRGB(230,230,230), 1));
             }
         };
-        task.runTaskTimer(AltarSMP.getPlugin(AltarSMP.class), 0L, 2L);
-        boneCageRunnables.put(target.getUniqueId(), task);
+        particleTask.runTaskTimer(AltarSMP.getPlugin(AltarSMP.class), 0L, 10L);
+        boneCageRunnables.put(target.getUniqueId(), particleTask);
     }
 
     private void removeBoneCage(Player target) {
         BukkitRunnable task = boneCageRunnables.remove(target.getUniqueId());
         if (task != null) {
             task.cancel();
+        }
+        java.util.List<Entity> displays = boneCageDisplays.remove(target.getUniqueId());
+        if (displays != null) {
+            for (Entity e : displays) {
+                e.remove();
+            }
         }
     }
 
@@ -294,6 +406,22 @@ public class AbilityListener implements Listener {
             
             player.setDisplayName(ChatColor.LIGHT_PURPLE + "[" + entityType.toString().toLowerCase().replace("_", " ") + "] " + player.getName());
             
+            BukkitRunnable prev = disguiseTimers.remove(player.getUniqueId());
+            if (prev != null) {
+                prev.cancel();
+            }
+            BukkitRunnable timer = new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (player.isOnline() && currentDisguise.containsKey(player.getUniqueId())) {
+                        removeDisguise(player);
+                        player.sendMessage(ChatColor.LIGHT_PURPLE + "Wand of Illusion: " + ChatColor.GRAY + "Your disguise has faded.");
+                    }
+                }
+            };
+            timer.runTaskLater(AltarSMP.getPlugin(AltarSMP.class), 120L * 20L);
+            disguiseTimers.put(player.getUniqueId(), timer);
+            
         } catch (Exception e) {
             player.sendMessage(ChatColor.RED + "Error applying disguise: " + e.getMessage());
             e.printStackTrace();
@@ -310,6 +438,10 @@ public class AbilityListener implements Listener {
                 
                 player.getWorld().spawnParticle(Particle.SMOKE, player.getLocation(), 30, 0.5, 0.5, 0.5, 0.1);
                 player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, 1.0f, 0.5f);
+                BukkitRunnable t = disguiseTimers.remove(player.getUniqueId());
+                if (t != null) {
+                    t.cancel();
+                }
                 
             } catch (Exception e) {
                 player.sendMessage(ChatColor.RED + "Error removing disguise: " + e.getMessage());
@@ -367,19 +499,64 @@ public class AbilityListener implements Listener {
         player.sendMessage(ChatColor.DARK_RED + "Bloodlust: " + ChatColor.GREEN + "Blood Trail activated! You feel empowered!");
         player.playSound(player.getLocation(), Sound.BLOCK_GRAVEL_PLACE, 1.0f, 0.5f);
 
-        new BukkitRunnable() {
+        UUID id = player.getUniqueId();
+        activeBloodTrails.add(id);
+        enterBloodForm(player);
+        BukkitRunnable trailTask = new BukkitRunnable() {
             int ticks = 0;
             @Override
             public void run() {
                 if (!player.isOnline() || ticks >= 200) {
+                    activeBloodTrails.remove(id);
+                    exitBloodForm(player, false);
                     cancel();
                     return;
                 }
                 Location loc = player.getLocation().clone().add(0, 0.1, 0);
+                player.getWorld().spawnParticle(Particle.DUST, loc, 40, 0.5, 0.4, 0.5, new Particle.DustOptions(Color.fromRGB(139, 0, 0), 1.5F));
                 player.getWorld().spawnParticle(Particle.DUST, loc, 14, 0.25, 0.01, 0.25, new Particle.DustOptions(Color.fromRGB(139, 0, 0), 1.2F));
+                player.sendActionBar(Component.text("Press [JUMP] to Exit."));
                 ticks++;
             }
-        }.runTaskTimer(AltarSMP.getPlugin(AltarSMP.class), 0L, 1L);
+        };
+        trailTask.runTaskTimer(AltarSMP.getPlugin(AltarSMP.class), 0L, 1L);
+        bloodTrailTasks.put(id, trailTask);
+    }
+
+    private void enterBloodForm(Player player) {
+        bloodFormPlayers.add(player.getUniqueId());
+        try {
+            Class<?> mobDisguiseClass = Class.forName("me.libraryaddict.disguises.disguisetypes.MobDisguise");
+            Object mobDisguise = mobDisguiseClass.getConstructor(EntityType.class).newInstance(EntityType.SLIME);
+            Object watcher = mobDisguiseClass.getMethod("getWatcher").invoke(mobDisguise);
+            Class<?> slimeWatcherClass = Class.forName("me.libraryaddict.disguises.watchers.SlimeWatcher");
+            if (slimeWatcherClass.isInstance(watcher)) {
+                slimeWatcherClass.getMethod("setSize", int.class).invoke(watcher, 1);
+            }
+            Class<?> disguiseApiClass = Class.forName("me.libraryaddict.disguises.api.DisguiseAPI");
+            disguiseApiClass.getMethod("disguiseToAll", Entity.class, Class.forName("me.libraryaddict.disguises.disguisetypes.Disguise")).invoke(null, player, mobDisguise);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void exitBloodForm(Player player, boolean fromJump) {
+        UUID id = player.getUniqueId();
+        bloodFormPlayers.remove(id);
+        BukkitRunnable task = bloodTrailTasks.remove(id);
+        if (task != null) {
+            task.cancel();
+            activeBloodTrails.remove(id);
+        }
+        try {
+            Class<?> disguiseApiClass = Class.forName("me.libraryaddict.disguises.api.DisguiseAPI");
+            disguiseApiClass.getMethod("undisguiseToAll", Entity.class).invoke(null, player);
+        } catch (Exception ignored) {
+        }
+        player.removePotionEffect(PotionEffectType.REGENERATION);
+        player.removePotionEffect(PotionEffectType.RESISTANCE);
+        if (fromJump) {
+            player.sendMessage(ChatColor.DARK_RED + "Bloodlust: " + ChatColor.RED + "Blood Trail ended.");
+        }
     }
     
     private void performBloodHook(Player player) {
@@ -435,5 +612,51 @@ public class AbilityListener implements Listener {
 
     public int getPlayerKillCount(UUID victimId) {
         return killCounts.getOrDefault(victimId, 0);
+    }
+
+    private boolean hasBloodlustInInventory(Player player) {
+        for (ItemStack stack : player.getInventory().getContents()) {
+            if (stack != null && CustomItems.isBloodlust(stack)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int getHighestBloodlustKills(Player player) {
+        int max = 0;
+        for (ItemStack stack : player.getInventory().getContents()) {
+            if (stack != null && CustomItems.isBloodlust(stack)) {
+                max = Math.max(max, CustomItems.getBloodlustKillCount(stack));
+            }
+        }
+        return max;
+    }
+
+    private Player findNearestPlayer(Player source, double radius) {
+        Player nearest = null;
+        double min = radius;
+        for (Player p : source.getWorld().getPlayers()) {
+            if (p == source || p.isDead()) continue;
+            double d = p.getLocation().distance(source.getLocation());
+            if (d <= min) {
+                min = d;
+                nearest = p;
+            }
+        }
+        return nearest;
+    }
+
+    private void drawDirectionParticles(Location from, Location to, Color color) {
+        Vector dir = to.toVector().subtract(from.toVector());
+        double length = dir.length();
+        if (length < 1e-6) return;
+        Vector step = dir.normalize().multiply(0.8);
+        Location cursor = from.clone().add(0, 1.5, 0);
+        int points = (int) Math.min(20, Math.ceil(length / 0.8));
+        for (int i = 0; i < points; i++) {
+            cursor.getWorld().spawnParticle(Particle.DUST, cursor, 3, 0.02, 0.02, 0.02, new Particle.DustOptions(color, 1));
+            cursor.add(step);
+        }
     }
 }

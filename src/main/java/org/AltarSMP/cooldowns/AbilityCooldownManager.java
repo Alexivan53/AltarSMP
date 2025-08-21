@@ -74,7 +74,7 @@ public class AbilityCooldownManager {
             @Override
             public void run() {
                 if (!player.isOnline() || System.currentTimeMillis() >= endTime) {
-                    // Cooldown finished or player offline
+                    
                     if (bossBars.get(playerId).containsKey(abilityName)) {
                         bossBars.get(playerId).get(abilityName).removeAll();
                         bossBars.get(playerId).remove(abilityName);

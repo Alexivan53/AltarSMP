@@ -24,7 +24,7 @@ import java.util.UUID;
 public class GiveCraftingMaterialsCommand implements CommandExecutor {
 
     private final HashMap<UUID, Long> cooldowns = new HashMap<>();
-    private final long cooldownTime = 60; // Cooldown time in seconds
+    private final long cooldownTime = 60;
     private final AltarSMP plugin;
 
     public GiveCraftingMaterialsCommand(AltarSMP plugin) {
@@ -151,6 +151,6 @@ public class GiveCraftingMaterialsCommand implements CommandExecutor {
                     timeLeft--;
                 }
             }
-        }.runTaskTimer(plugin, 0, 20); // Schedule to run every second
+        }.runTaskTimer(plugin, 0, 20);
     }
 }

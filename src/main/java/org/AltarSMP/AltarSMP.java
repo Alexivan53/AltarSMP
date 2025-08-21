@@ -6,6 +6,7 @@ import org.AltarSMP.commands.GiveCraftingMaterialsCommand;
 import org.AltarSMP.commands.GiveBloodlustCommand;
 import org.AltarSMP.commands.GiveWandOfIllusionCommand;
 import org.AltarSMP.listeners.AbilityListener;
+import org.AltarSMP.commands.AltarCommand;
 import org.AltarSMP.listeners.WardenDropListener;
 import org.AltarSMP.recipes.CraftingRecipes;
 
@@ -43,8 +44,18 @@ public final class AltarSMP extends JavaPlugin {
                 getLogger().severe("Could not find givewandofillusion command in plugin.yml!");
             }
 
+            if (getCommand("altar") != null) {
+                AltarCommand altarCmd = new AltarCommand(this);
+                getCommand("altar").setExecutor(altarCmd);
+                getCommand("altar").setTabCompleter(altarCmd);
+                getLogger().info("Registered altar command");
+            } else {
+                getLogger().severe("Could not find altar command in plugin.yml!");
+            }
+
             getServer().getPluginManager().registerEvents(new AbilityListener(this), this);
             getServer().getPluginManager().registerEvents(new WardenDropListener(), this);
+            
 
             CraftingRecipes.registerRecipes(this);
             
