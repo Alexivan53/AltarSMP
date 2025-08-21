@@ -1,0 +1,38 @@
+name: AltarSMP
+author: [AltarSMP Developer Team]
+version: '1.0-SNAPSHOT'
+main: org.AltarSMP.AltarSMP
+api-version: '1.21'
+softdepend: [LibsDisguises, ProtocolLib]
+
+commands:
+  giveboneblade:
+    description: Gives the player a Bone Blade item
+    usage: /<command>
+    permission: altarsmp.giveboneblade
+  givecraftingmaterials:
+    description: Gives the player all materials needed to craft the Bone Blade
+    usage: /<command>
+    permission: altarsmp.givecraftingmaterials
+  givebloodlust:
+    description: Gives the player a Bloodlust sword
+    usage: /<command>
+    permission: altarsmp.givebloodlust
+  givewandofillusion:
+    description: Gives the player a Wand of Illusion
+    usage: /<command>
+    permission: altarsmp.givewandofillusion
+
+permissions:
+  altarsmp.giveboneblade:
+    description: Allows players to get the Bone Blade item
+    default: true
+  altarsmp.givecraftingmaterials:
+    description: Allows players to get crafting materials for the Bone Blade
+    default: true
+  altarsmp.givebloodlust:
+    description: Allows players to get the Bloodlust sword
+    default: true
+  altarsmp.givewandofillusion:
+    description: Allows players to get the Wand of Illusion
+    default: true
