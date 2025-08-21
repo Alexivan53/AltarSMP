@@ -23,7 +23,6 @@ public class GiveBloodlustCommand implements CommandExecutor {
             return true;
         }
 
-        // Give the Bloodlust sword
         player.getInventory().addItem(CustomItems.createBloodlust());
         
         player.sendMessage(ChatColor.DARK_RED + "Bloodlust: " + ChatColor.GREEN + "You have received the Bloodlust sword!");

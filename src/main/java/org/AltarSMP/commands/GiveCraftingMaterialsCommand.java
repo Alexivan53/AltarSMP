@@ -41,7 +41,6 @@ public class GiveCraftingMaterialsCommand implements CommandExecutor {
         Player player = (Player) sender;
         UUID playerId = player.getUniqueId();
 
-        // Check if the player is on cooldown
         if (cooldowns.containsKey(playerId)) {
             long timeLeft = ((cooldowns.get(playerId) / 1000) + cooldownTime) - (System.currentTimeMillis() / 1000);
             if (timeLeft > 0) {
@@ -50,23 +49,19 @@ public class GiveCraftingMaterialsCommand implements CommandExecutor {
             }
         }
 
-        // Give all the crafting materials
         giveMaterials(player);
         
         player.sendMessage(ChatColor.GREEN + "You have received all the materials needed to craft the Bone Blade!");
         player.sendMessage(ChatColor.YELLOW + "Note: You'll need to craft the Weapon Handle first using the recipe!");
 
-        // Set the cooldown
         cooldowns.put(playerId, System.currentTimeMillis());
 
-        // Create and display the boss bar
         showCooldownBossBar(player);
 
         return true;
     }
 
     private void giveMaterials(Player player) {
-        // Give all the crafting materials
         player.getInventory().addItem(
             new ItemStack(Material.BONE_BLOCK, 64),
             new ItemStack(Material.BONE_BLOCK, 64),
@@ -80,8 +75,7 @@ public class GiveCraftingMaterialsCommand implements CommandExecutor {
             CustomItems.createPlayerHead(),
             CustomItems.createPlayerHead()
         );
-        
-        // Debug: Give a test item with different custom model data
+
         player.getInventory().addItem(createTestWardenHeart());
     }
     
@@ -91,7 +85,6 @@ public class GiveCraftingMaterialsCommand implements CommandExecutor {
         
         if (meta != null) {
             meta.setDisplayName(ChatColor.GOLD + "Test Warden Heart");
-            // Try a different custom model data value
             meta.setCustomModelData(1);
             meta.setLore(java.util.Arrays.asList(
                 ChatColor.YELLOW + "Test item with Custom Model Data: 1",
@@ -105,31 +98,25 @@ public class GiveCraftingMaterialsCommand implements CommandExecutor {
     }
 
     private ItemStack createWardenHeart() {
-        // Use a base item that definitely supports custom model data
         ItemStack wardenHeart = new ItemStack(Material.EMERALD);
         ItemMeta meta = wardenHeart.getItemMeta();
         
         if (meta != null) {
-            // Set custom name
             meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Warden Heart");
-            
-            // Set custom model data - this is the key part
+
             meta.setCustomModelData(10001);
-            
-            // Add lore
+
             meta.setLore(java.util.Arrays.asList(
                 ChatColor.GRAY + "A powerful heart from a fallen Warden",
                 ChatColor.GRAY + "Used in crafting powerful weapons",
                 ChatColor.DARK_PURPLE + "Custom Model Data: 10001"
             ));
-            
-            // Store custom data to identify it as a warden heart
+
             NamespacedKey key = new NamespacedKey(plugin, "warden_heart");
             meta.getPersistentDataContainer().set(key, PersistentDataType.BOOLEAN, true);
             
             wardenHeart.setItemMeta(meta);
-            
-            // Debug: Print the custom model data to confirm it's set
+
             plugin.getLogger().info("Created Warden Heart with Custom Model Data: " + meta.getCustomModelData());
         } else {
             plugin.getLogger().warning("Failed to get ItemMeta for Warden Heart!");
@@ -139,7 +126,6 @@ public class GiveCraftingMaterialsCommand implements CommandExecutor {
     }
 
     private void showCooldownBossBar(Player player) {
-        // Create and display the boss bar
         BossBar bossBar = Bukkit.createBossBar(
             "§6Crafting Materials §7Cooldown: §e" + cooldownTime + "s",
             BarColor.RED,
@@ -150,7 +136,6 @@ public class GiveCraftingMaterialsCommand implements CommandExecutor {
         bossBar.setVisible(true);
         bossBar.setProgress(1.0);
 
-        // Start a task to update the boss bar and remove it after the cooldown
         new BukkitRunnable() {
             int timeLeft = (int) cooldownTime;
 

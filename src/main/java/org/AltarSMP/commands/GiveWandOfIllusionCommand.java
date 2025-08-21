@@ -23,7 +23,6 @@ public class GiveWandOfIllusionCommand implements CommandExecutor {
             return true;
         }
 
-        // Give the Wand of Illusion
         player.getInventory().addItem(CustomItems.createWandOfIllusion());
         
         player.sendMessage(ChatColor.LIGHT_PURPLE + "Wand of Illusion: " + ChatColor.GREEN + "You have received the Wand of Illusion!");

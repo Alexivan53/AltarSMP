@@ -8,16 +8,13 @@ import org.AltarSMP.commands.GiveWandOfIllusionCommand;
 import org.AltarSMP.listeners.AbilityListener;
 import org.AltarSMP.listeners.WardenDropListener;
 import org.AltarSMP.recipes.CraftingRecipes;
-// Removed custom GlowEnchantment; using vanilla UNBREAKING to provide glow
 
 public final class AltarSMP extends JavaPlugin {
 
     @Override
     public void onEnable() {
         try {
-            // No-op: custom Glow enchant removed in favor of vanilla enchant glow
-            
-            // Register commands with error checking
+
             if (getCommand("giveboneblade") != null) {
                 getCommand("giveboneblade").setExecutor(new GiveBoneBladeCommand());
                 getLogger().info("Registered giveboneblade command");
@@ -45,12 +42,10 @@ public final class AltarSMP extends JavaPlugin {
             } else {
                 getLogger().severe("Could not find givewandofillusion command in plugin.yml!");
             }
-            
-            // Register listeners
+
             getServer().getPluginManager().registerEvents(new AbilityListener(this), this);
             getServer().getPluginManager().registerEvents(new WardenDropListener(), this);
-            
-            // Register recipes
+
             CraftingRecipes.registerRecipes(this);
             
             getLogger().info("AltarSMP plugin has been enabled successfully!");

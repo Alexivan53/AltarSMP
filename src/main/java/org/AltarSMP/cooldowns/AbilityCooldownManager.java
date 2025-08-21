@@ -39,28 +39,23 @@ public class AbilityCooldownManager {
     
     public void setCooldown(Player player, String abilityName, long cooldownSeconds) {
         UUID playerId = player.getUniqueId();
-        
-        // Initialize player cooldowns if needed
+
         cooldowns.putIfAbsent(playerId, new HashMap<>());
         bossBars.putIfAbsent(playerId, new HashMap<>());
-        
-        // Set cooldown end time
+
         long cooldownEnd = System.currentTimeMillis() + (cooldownSeconds * 1000);
         cooldowns.get(playerId).put(abilityName, cooldownEnd);
-        
-        // Create and show boss bar
+
         showBossBar(player, abilityName, cooldownSeconds);
     }
     
     private void showBossBar(Player player, String abilityName, long cooldownSeconds) {
         UUID playerId = player.getUniqueId();
-        
-        // Remove existing boss bar if any
+
         if (bossBars.get(playerId).containsKey(abilityName)) {
             bossBars.get(playerId).get(abilityName).removeAll();
         }
-        
-        // Create new boss bar
+
         BossBar bossBar = Bukkit.createBossBar(
             "§6" + abilityName + " §7Cooldown",
             BarColor.RED,
@@ -70,8 +65,7 @@ public class AbilityCooldownManager {
         bossBar.addPlayer(player);
         bossBar.setProgress(1.0);
         bossBars.get(playerId).put(abilityName, bossBar);
-        
-        // Start cooldown countdown
+
         new BukkitRunnable() {
             double progress = 1.0;
             long startTime = System.currentTimeMillis();
@@ -91,13 +85,11 @@ public class AbilityCooldownManager {
                     this.cancel();
                     return;
                 }
-                
-                // Update boss bar progress
+
                 long remainingTime = endTime - System.currentTimeMillis();
                 progress = (double) remainingTime / (cooldownSeconds * 1000);
                 bossBar.setProgress(Math.max(0.0, progress));
-                
-                // Update title with remaining time
+
                 int remainingSeconds = (int) (remainingTime / 1000);
                 bossBar.setTitle("§6" + abilityName + " §7Cooldown: §e" + remainingSeconds + "s");
             }

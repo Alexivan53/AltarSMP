@@ -22,16 +22,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-// Lib's Disguises imports
-// Optional: LibsDisguises. If not on classpath at compile time, these are unused.
-
 public class AbilityListener implements Listener {
 
     private final AbilityCooldownManager cooldownManager;
     private final Map<UUID, Long> lastKillTime = new HashMap<>();
     private final Map<UUID, Integer> killCounts = new HashMap<>();
     private final Map<UUID, EntityType> lastKilledMob = new HashMap<>();
-    // Track disguise state by UUID only to avoid compile-time dependency on Disguise class
     private final Map<UUID, Boolean> currentDisguise = new HashMap<>();
     private final Map<UUID, BukkitRunnable> boneCageRunnables = new HashMap<>();
 
@@ -52,7 +48,6 @@ public class AbilityListener implements Listener {
         if (isBoneBlade(item) && player.isSneaking()) {
             event.setCancelled(true);
             
-            // Check cooldown for Bone Cage ability
             if (cooldownManager.isOnCooldown(player, "Bone Cage")) {
                 long remaining = cooldownManager.getRemainingCooldown(player, "Bone Cage");
                 player.sendMessage(ChatColor.RED + "Bone Cage is on cooldown for " + remaining + " more seconds!");
@@ -60,7 +55,6 @@ public class AbilityListener implements Listener {
             }
             
             performBoneCage(player, target);
-            // Set 15 second cooldown for Bone Cage
             cooldownManager.setCooldown(player, "Bone Cage", 15);
         }
     }
@@ -74,7 +68,6 @@ public class AbilityListener implements Listener {
             if (!player.isSneaking()) {
                 event.setCancelled(true);
                 
-                // Check cooldown for Skeletal Leap ability
                 if (cooldownManager.isOnCooldown(player, "Skeletal Leap")) {
                     long remaining = cooldownManager.getRemainingCooldown(player, "Skeletal Leap");
                     player.sendMessage(ChatColor.RED + "Skeletal Leap is on cooldown for " + remaining + " more seconds!");
@@ -82,16 +75,13 @@ public class AbilityListener implements Listener {
                 }
                 
                 performSkeletalLeap(player);
-                // Set 8 second cooldown for Skeletal Leap
                 cooldownManager.setCooldown(player, "Skeletal Leap", 8);
             }
         }
-
-        // Bloodlust abilities
+        
         if (CustomItems.isBloodlust(item)) {
             int kills = CustomItems.getBloodlustKillCount(item);
             
-            // Blood Trail ability (3+ kills)
             if (kills >= 3 && event.getAction().toString().contains("RIGHT_CLICK")) {
                 if (!player.isSneaking()) {
                     createBloodTrail(player);
@@ -99,7 +89,6 @@ public class AbilityListener implements Listener {
                 }
             }
             
-            // Blood Hook ability (5+ kills)
             if (kills >= 5 && event.getAction().toString().contains("RIGHT_CLICK")) {
                 if (player.isSneaking()) {
                     performBloodHook(player);
@@ -107,8 +96,7 @@ public class AbilityListener implements Listener {
                 }
             }
         }
-
-        // Wand of Illusion ability
+        
         if (CustomItems.isWandOfIllusion(item) && event.getAction().toString().contains("RIGHT_CLICK")) {
             event.setCancelled(true);
             performIllusionTransformation(player);
@@ -133,19 +121,15 @@ public class AbilityListener implements Listener {
             return;
         }
         
-        // Increment kill count
         int currentKills = CustomItems.getBloodlustKillCount(mainHand);
         int newKills = currentKills + 1;
         CustomItems.setBloodlustKillCount(mainHand, newKills);
         
-        // Store kill time for tracking
         lastKillTime.put(victim.getUniqueId(), System.currentTimeMillis());
         killCounts.put(victim.getUniqueId(), newKills);
         
-        // Apply abilities based on new kill count
         applyKillAbilities(killer, newKills);
         
-        // Visual and sound effects
         killer.getWorld().spawnParticle(Particle.DUST, killer.getLocation(), 50, 0.5, 0.5, 0.5, new Particle.DustOptions(Color.RED, 2));
         killer.playSound(killer.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 0.5f);
         
@@ -158,10 +142,8 @@ public class AbilityListener implements Listener {
             Player player = event.getEntity().getKiller();
             EntityType killedMob = event.getEntityType();
             
-            // Store the last killed mob for the Wand of Illusion
             lastKilledMob.put(player.getUniqueId(), killedMob);
             
-            // Visual effect to show mob was tracked
             player.getWorld().spawnParticle(Particle.ENCHANT, event.getEntity().getLocation(), 20, 0.5, 0.5, 0.5, 0.1);
             player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.5f);
             
@@ -181,10 +163,8 @@ public class AbilityListener implements Listener {
         
         int kills = CustomItems.getBloodlustKillCount(item);
         
-        // Infection Attack ability (0+ kills) - 15% chance to make enemy bleed
         if (kills >= 0) {
             if (Math.random() < 0.15) {
-                // Find nearby players and apply bleeding effect
                 for (Player nearby : player.getWorld().getPlayers()) {
                     if (nearby.getLocation().distance(player.getLocation()) <= 3.0 && nearby != player) {
                         applyBleedingEffect(nearby);
@@ -240,7 +220,6 @@ public class AbilityListener implements Listener {
     }
 
     private void createBoneCage(Player target) {
-        // Repeating particle animation of a "mini bone block" cage
         BukkitRunnable task = new BukkitRunnable() {
             @Override
             public void run() {
@@ -256,7 +235,6 @@ public class AbilityListener implements Listener {
                             if ((x == 0 && y == 0) || (x == 0 && y == 1)) {
                                 continue;
                             }
-                            // Only draw the shell (outer layer)
                             if (Math.abs(x) + Math.abs(y - 1) + Math.abs(z) >= 2) {
                                 Location loc = center.clone().add(x + 0.5, y, z + 0.5);
                                 target.getWorld().spawnParticle(Particle.BLOCK, loc, 4, 0.02, 0.02, 0.02, Material.BONE_BLOCK.createBlockData());
@@ -287,7 +265,7 @@ public class AbilityListener implements Listener {
         player.getWorld().spawnParticle(Particle.SMOKE, player.getLocation(), 20, 0.5, 0.5, 0.5, 0.1);
     }
 
-    // Wand of Illusion transformation
+
     private void performIllusionTransformation(Player player) {
         EntityType lastKilled = lastKilledMob.get(player.getUniqueId());
         
@@ -295,14 +273,11 @@ public class AbilityListener implements Listener {
             player.sendMessage(ChatColor.LIGHT_PURPLE + "Wand of Illusion: " + ChatColor.RED + "You haven't killed any mobs recently!");
             return;
         }
-
-        // Check if player is already disguised
+        
         if (currentDisguise.containsKey(player.getUniqueId())) {
-            // Remove current disguise
             removeDisguise(player);
             player.sendMessage(ChatColor.LIGHT_PURPLE + "Wand of Illusion: " + ChatColor.GREEN + "Transformation removed!");
         } else {
-            // Apply new disguise
             applyDisguise(player, lastKilled);
             player.sendMessage(ChatColor.LIGHT_PURPLE + "Wand of Illusion: " + ChatColor.GREEN + "You transformed into a " + 
                             ChatColor.YELLOW + lastKilled.toString().toLowerCase().replace("_", " ") + ChatColor.GREEN + "!");
@@ -311,16 +286,12 @@ public class AbilityListener implements Listener {
 
     private void applyDisguise(Player player, EntityType entityType) {
         try {
-            // Create mob disguise using Lib's Disguises
-            // If LibsDisguises is present at runtime, trigger disguise via reflection
             applyLibsDisguises(player, entityType);
             currentDisguise.put(player.getUniqueId(), true);
             
-            // Visual transformation effect
             player.getWorld().spawnParticle(Particle.ENCHANT, player.getLocation(), 50, 0.5, 0.5, 0.5, 0.1);
             player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, 1.0f, 1.0f);
             
-            // Change player's display name temporarily
             player.setDisplayName(ChatColor.LIGHT_PURPLE + "[" + entityType.toString().toLowerCase().replace("_", " ") + "] " + player.getName());
             
         } catch (Exception e) {
@@ -333,13 +304,10 @@ public class AbilityListener implements Listener {
         Boolean hadDisguise = currentDisguise.remove(player.getUniqueId());
         if (hadDisguise != null && hadDisguise) {
             try {
-                // Remove disguise via reflection if LibsDisguises available
                 removeLibsDisguises(player);
                 
-                // Reset display name
                 player.setDisplayName(player.getName());
                 
-                // Visual effect for removing disguise
                 player.getWorld().spawnParticle(Particle.SMOKE, player.getLocation(), 30, 0.5, 0.5, 0.5, 0.1);
                 player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, 1.0f, 0.5f);
                 
@@ -349,8 +317,7 @@ public class AbilityListener implements Listener {
             }
         }
     }
-
-    // Use reflection so we don't require LibsDisguises at compile time
+    
     private void applyLibsDisguises(Player player, EntityType entityType) throws Exception {
         Class<?> mobDisguiseClass = Class.forName("me.libraryaddict.disguises.disguisetypes.MobDisguise");
         Class<?> disguiseApiClass = Class.forName("me.libraryaddict.disguises.api.DisguiseAPI");
@@ -363,53 +330,43 @@ public class AbilityListener implements Listener {
         Class<?> disguiseApiClass = Class.forName("me.libraryaddict.disguises.api.DisguiseAPI");
         disguiseApiClass.getMethod("undisguiseToAll", Entity.class).invoke(null, player);
     }
-
-    // Bloodlust abilities
+    
     private void applyKillAbilities(Player player, int kills) {
-        // Remove old effects first
         player.removePotionEffect(PotionEffectType.SPEED);
         player.removePotionEffect(PotionEffectType.STRENGTH);
         
-        // Apply new effects based on kill count
         switch (kills) {
             case 1:
-                // Permanent Speed II
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, Integer.MAX_VALUE, 1, false, false));
                 player.sendMessage(ChatColor.DARK_RED + "Bloodlust: " + ChatColor.GREEN + "Permanent Speed II unlocked!");
                 break;
                 
             case 2:
-                // Blood Tracker ability
                 player.sendMessage(ChatColor.DARK_RED + "Bloodlust: " + ChatColor.GREEN + "Blood Tracker unlocked! You can track killed players for 30 minutes.");
                 break;
                 
             case 3:
-                // Blood Trail ability
                 player.sendMessage(ChatColor.DARK_RED + "Bloodlust: " + ChatColor.GREEN + "Blood Trail unlocked! Right-click to create blood pools with buffs.");
                 break;
                 
             case 4:
-                // Permanent Strength I
                 player.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, Integer.MAX_VALUE, 0, false, false));
                 player.sendMessage(ChatColor.DARK_RED + "Bloodlust: " + ChatColor.GREEN + "Permanent Strength I unlocked!");
                 break;
                 
             case 5:
-                // Blood Hook ability
                 player.sendMessage(ChatColor.DARK_RED + "Bloodlust: " + ChatColor.GREEN + "Blood Hook unlocked! Shift + Right-click to hook enemies.");
                 break;
         }
     }
     
     private void createBloodTrail(Player player) {
-        // Apply buffs for 10 seconds
         player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 200, 1, false, false));
         player.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE, 200, 0, false, false));
 
         player.sendMessage(ChatColor.DARK_RED + "Bloodlust: " + ChatColor.GREEN + "Blood Trail activated! You feel empowered!");
         player.playSound(player.getLocation(), Sound.BLOCK_GRAVEL_PLACE, 1.0f, 0.5f);
 
-        // Spawn a particle trail that follows the player for 10 seconds
         new BukkitRunnable() {
             int ticks = 0;
             @Override
@@ -426,7 +383,6 @@ public class AbilityListener implements Listener {
     }
     
     private void performBloodHook(Player player) {
-        // Find nearest player within 20 blocks
         Player nearest = null;
         double minDistance = 20.0;
         
@@ -444,12 +400,10 @@ public class AbilityListener implements Listener {
             player.sendMessage(ChatColor.DARK_RED + "Bloodlust: " + ChatColor.RED + "No players nearby to hook!");
             return;
         }
-        
-        // Hook effect
+
         Vector direction = player.getLocation().toVector().subtract(nearest.getLocation().toVector()).normalize();
         nearest.setVelocity(direction.multiply(2.0).setY(1.0));
-        
-        // Visual effects
+
         player.getWorld().spawnParticle(Particle.DUST, nearest.getLocation(), 50, 0.5, 0.5, 0.5, new Particle.DustOptions(Color.RED, 2));
         player.playSound(player.getLocation(), Sound.ENTITY_FISHING_BOBBER_SPLASH, 1.0f, 0.5f);
         
@@ -458,18 +412,15 @@ public class AbilityListener implements Listener {
     }
     
     private void applyBleedingEffect(Player target) {
-        // Apply bleeding effect (damage over time)
         target.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 100, 0, false, false));
         target.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 60, 0, false, false));
-        
-        // Visual effects
+
         target.getWorld().spawnParticle(Particle.DUST, target.getLocation(), 30, 0.5, 0.5, 0.5, new Particle.DustOptions(Color.RED, 1));
         target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_HURT, 0.5f, 1.5f);
         
         target.sendMessage(ChatColor.DARK_RED + "Bloodlust: " + ChatColor.RED + "You're bleeding from the infection attack!");
     }
-    
-    // Method to check if a player can be tracked (within 30 minutes of kill)
+
     public boolean canTrackPlayer(UUID victimId) {
         if (!lastKillTime.containsKey(victimId)) {
             return false;
@@ -478,12 +429,10 @@ public class AbilityListener implements Listener {
         long killTime = lastKillTime.get(victimId);
         long currentTime = System.currentTimeMillis();
         long timeDiff = currentTime - killTime;
-        
-        // 30 minutes = 30 * 60 * 1000 milliseconds
+
         return timeDiff <= 1800000;
     }
-    
-    // Method to get kill count for a specific player
+
     public int getPlayerKillCount(UUID victimId) {
         return killCounts.getOrDefault(victimId, 0);
     }

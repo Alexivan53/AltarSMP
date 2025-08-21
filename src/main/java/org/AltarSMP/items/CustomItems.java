@@ -84,9 +84,6 @@ public class CustomItems {
         return head;
     }
 
-    // --------------------
-    // Bloodlust (moved here)
-    // --------------------
 
     public static ItemStack createBloodlust() {
         ItemStack bloodlust = new ItemStack(Material.DIAMOND_SWORD);
@@ -199,10 +196,7 @@ public class CustomItems {
         ));
     }
 
-    // ---------------------------
-    // Wand of Illusion (moved here)
-    // ---------------------------
-
+    
     public static ItemStack createWandOfIllusion() {
         ItemStack wand = new ItemStack(Material.STICK);
         ItemMeta meta = wand.getItemMeta();
